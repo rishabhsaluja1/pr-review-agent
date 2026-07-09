@@ -1,3 +1,7 @@
+// test: intentionally bad code for PR review demo
+var password = "admin123" // hardcoded secret
+
+
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import dotenv from 'dotenv'
 import { fetchPRDiff, postReviewComment } from './github.js'
