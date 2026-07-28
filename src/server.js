@@ -37,8 +37,8 @@ app.post('/webhook', async (req, res) => {
   if (event !== 'pull_request') {
     return res.status(200).send('Event ignored')
   }
-
-  if (!['opened', 'synchronize'].includes(payload.action)) {
+  console.log('PR action:', payload.action)
+  if (!['opened', 'synchronize', 'reopened'].includes(payload.action)) {
     return res.status(200).send('Action ignored')
   }
 

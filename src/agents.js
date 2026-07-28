@@ -1,103 +1,104 @@
-// test: intentionally bad code for PR review demo
-var password = "admin123" // hardcoded secret
-
-
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import dotenv from 'dotenv'
 import { fetchPRDiff, postReviewComment } from './github.js'
 
 dotenv.config()
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 // ── Agent 1: Security Auditor ──────────────────────────────────────
 async function runSecurityAgent(diff) {
-  const prompt = `
-You are a strict Security Auditor reviewing a GitHub Pull Request diff.
-Your ONLY job is to find security vulnerabilities.
-
-Look for:
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a strict Security Auditor reviewing a GitHub Pull Request diff. 
+Your ONLY job is to find security vulnerabilities. Look for:
 - SQL injection risks
 - Exposed API keys or secrets hardcoded in the code
 - Authentication or authorization flaws
-- Insecure dependencies
 - XSS vulnerabilities
-- Any sensitive data being logged or exposed
-
-Here is the code diff:
-\`\`\`
-${diff}
-\`\`\`
-
+- Insecure dependencies
+- Sensitive data being logged or exposed
 Respond in this exact format:
 SECURITY FINDINGS:
 - [finding 1]
 - [finding 2]
-If nothing is found, write: SECURITY FINDINGS: No issues found.
-`
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+If nothing is found, write: SECURITY FINDINGS: No issues found.`
+      },
+      {
+        role: 'user',
+        content: `Review this code diff:\n\`\`\`\n${diff}\n\`\`\``
+      }
+    ],
+    max_tokens: 500
+  })
+  return response.choices[0].message.content
 }
 
 // ── Agent 2: Performance Optimizer ────────────────────────────────
 async function runPerformanceAgent(diff) {
-  const prompt = `
-You are a Performance Optimizer reviewing a GitHub Pull Request diff.
-Your ONLY job is to find performance issues.
-
-Look for:
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a Performance Optimizer reviewing a GitHub Pull Request diff.
+Your ONLY job is to find performance issues. Look for:
 - Unnecessary loops or nested loops (O(n²) complexity)
 - Missing database indexes or inefficient queries
 - Memory leaks or unnecessary object creation
 - Blocking synchronous operations that should be async
 - Redundant API calls or computations
-
-Here is the code diff:
-\`\`\`
-${diff}
-\`\`\`
-
 Respond in this exact format:
 PERFORMANCE FINDINGS:
 - [finding 1]
 - [finding 2]
-If nothing is found, write: PERFORMANCE FINDINGS: No issues found.
-`
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+If nothing is found, write: PERFORMANCE FINDINGS: No issues found.`
+      },
+      {
+        role: 'user',
+        content: `Review this code diff:\n\`\`\`\n${diff}\n\`\`\``
+      }
+    ],
+    max_tokens: 500
+  })
+  return response.choices[0].message.content
 }
 
 // ── Agent 3: Lead Developer ────────────────────────────────────────
 async function runLeadDevAgent(diff) {
-  const prompt = `
-You are a Lead Developer reviewing a GitHub Pull Request diff.
-Your ONLY job is to check code quality, logic, and maintainability.
-
-Look for:
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a Lead Developer reviewing a GitHub Pull Request diff.
+Your ONLY job is to check code quality, logic, and maintainability. Look for:
 - Unclear variable or function names
 - Missing error handling
 - Duplicated code that should be refactored
 - Logic errors or edge cases not handled
-- Missing or inadequate comments on complex logic
+- Missing comments on complex logic
 - Functions doing too many things at once
-
-Here is the code diff:
-\`\`\`
-${diff}
-\`\`\`
-
 Respond in this exact format:
 CODE QUALITY FINDINGS:
 - [finding 1]
 - [finding 2]
-If nothing is found, write: CODE QUALITY FINDINGS: No issues found.
-`
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+If nothing is found, write: CODE QUALITY FINDINGS: No issues found.`
+      },
+      {
+        role: 'user',
+        content: `Review this code diff:\n\`\`\`\n${diff}\n\`\`\``
+      }
+    ],
+    max_tokens: 500
+  })
+  return response.choices[0].message.content
 }
 
-// ── Orchestrator: runs all three agents and combines results ───────
+// ── Orchestrator ───────────────────────────────────────────────────
 export async function runAgentPipeline(prData) {
   console.log('Fetching PR diff...')
   const diff = await fetchPRDiff(prData)
@@ -109,7 +110,6 @@ export async function runAgentPipeline(prData) {
 
   console.log('Running all three agents in parallel...')
 
-  // All three agents run at the same time — not one after another
   const [securityFindings, performanceFindings, codeQualityFindings] = await Promise.all([
     runSecurityAgent(diff),
     runPerformanceAgent(diff),
@@ -118,9 +118,7 @@ export async function runAgentPipeline(prData) {
 
   console.log('Agents done. Compiling final review...')
 
-  // Combine all findings into one clean GitHub comment
-  const finalComment = `
-## 🤖 Multi-Agent PR Review
+  const finalComment = `## 🤖 Multi-Agent PR Review
 
 > This review was automatically generated by 3 specialized AI agents.
 
@@ -140,8 +138,7 @@ ${performanceFindings}
 ${codeQualityFindings}
 
 ---
-*Powered by Gemini + Multi-Agent Orchestration*
-`
+*Powered by Llama 3.3 70B + Multi-Agent Orchestration*`
 
   console.log('Posting review comment to GitHub...')
   await postReviewComment(prData, finalComment)
