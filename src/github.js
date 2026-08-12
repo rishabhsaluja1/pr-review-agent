@@ -1,6 +1,31 @@
 import { Octokit } from '@octokit/rest'
 import dotenv from 'dotenv'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const REVIEWS_FILE = path.join(__dirname, 'reviews.json')
+
+export function saveReview(data) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8'))
+    existing.unshift(data) // newest first
+    const trimmed = existing.slice(0, 50) // keep last 50 reviews
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify(trimmed, null, 2))
+    console.log(`Review saved — total: ${trimmed.length}`)
+  } catch (err) {
+    console.error('Error saving review:', err.message)
+  }
+}
+
+export function getReviews() {
+  try {
+    return JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8'))
+  } catch {
+    return []
+  }
+}
 dotenv.config()
 
 const octokit = new Octokit({

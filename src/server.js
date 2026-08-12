@@ -2,7 +2,7 @@ import express from 'express'
 import crypto from 'crypto'
 import dotenv from 'dotenv'
 import { runAgentPipeline } from './agents.js'
-
+import { getReviews } from './github.js'
 dotenv.config()
 
 const app = express()
@@ -12,6 +12,12 @@ app.use(express.raw({ type: 'application/json' }))
 
 app.get('/', (req, res) => {
   res.send('PR Review Agent is running!')
+})
+
+app.get('/api/reviews', (req, res) => {
+  const reviews = getReviews()
+  res.setHeader('Content-Type', 'application/json')
+  res.send(JSON.stringify(reviews))
 })
 
 app.post('/webhook', async (req, res) => {
@@ -68,4 +74,4 @@ const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
   console.log(`Webhook endpoint: http://localhost:${PORT}/webhook`)
-})
+})"// testing data storage" 
