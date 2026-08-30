@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Review Agent</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F7F5;
+    --surface: #FFFFFF;
+    --border: #E4E4E0;
+    --border-strong: #C9C9C4;
+    --text: #1A1A1A;
+    --text-secondary: #6B6B6B;
+    --text-tertiary: #9B9B9B;
+    --accent: #2563EB;
+    --accent-subtle: #EFF4FF;
+    --green: #16A34A;
+    --green-subtle: #F0FDF4;
+    --red: #DC2626;
+    --red-subtle: #FEF2F2;
+    --yellow: #D97706;
+    --yellow-subtle: #FFFBEB;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "Fira Code", "Roboto Mono", monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .nav-left { display: flex; align-items: center; gap: 24px; }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--text);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-links { display: flex; gap: 4px; }
+
+  .nav-link {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 5px 11px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .nav-link:hover { background: var(--bg); color: var(--text); }
+  .nav-link.active { background: var(--bg); color: var(--text); font-weight: 500; }
+
+  .status-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: var(--mono);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .container { max-width: 980px; margin: 0 auto; padding: 36px 24px; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 600; margin-bottom: 5px; }
+  .page-subtitle { font-size: 14px; color: var(--text-secondary); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-delta { font-size: 12px; color: var(--text-tertiary); }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .section-title { font-size: 14px; font-weight: 600; }
+  .section-meta { font-size: 13px; color: var(--text-tertiary); font-family: var(--mono); }
+
+  .review-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+
+  .review-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .review-item:last-child { border-bottom: none; }
+  .review-item:hover { background: var(--bg); }
+  .review-item.active { background: var(--accent-subtle); border-left: 2px solid var(--accent); }
+
+  .review-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .pr-number { font-size: 13px; font-family: var(--mono); color: var(--text-tertiary); }
+  .pr-title { font-size: 14px; font-weight: 500; }
+
+  .review-meta {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 10px;
+  }
+
+  .review-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .badge {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-family: var(--mono);
+  }
+
+  .badge-red { background: var(--red-subtle); color: var(--red); }
+  .badge-yellow { background: var(--yellow-subtle); color: var(--yellow); }
+  .badge-green { background: var(--green-subtle); color: var(--green); }
+  .badge-gray { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 28px;
+    display: none;
+  }
+
+  .detail-panel.visible { display: block; }
+
+  .detail-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .detail-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .detail-sub { font-size: 13px; color: var(--text-tertiary); font-family: var(--mono); }
+
+  .detail-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font);
+    flex-shrink: 0;
+  }
+
+  .detail-close:hover { background: var(--bg); }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .agent-section {
+    padding: 20px 22px;
+    border-right: 1px solid var(--border);
+  }
+
+  .agent-section:last-child { border-right: none; }
+
+  .agent-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .finding {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding-left: 14px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .finding::before { content: "–"; position: absolute; left: 0; color: var(--text-tertiary); }
+  .finding.critical { color: var(--red); }
+  .finding.warning { color: var(--yellow); }
+  .finding.ok { color: var(--green); }
+
+  .empty-state {
+    padding: 56px 24px;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 14px;
+  }
+
+  .empty-state p { margin-top: 8px; font-size: 13px; }
+
+  .log-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .log-body {
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .log-line { display: flex; gap: 14px; line-height: 1.6; }
+  .log-time { color: var(--text-tertiary); flex-shrink: 0; }
+  .log-ok { color: var(--green); }
+  .log-warn { color: var(--yellow); }
+
+  .setup-panel {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .setup-panel.visible { display: block; }
+
+  .setup-section { padding: 26px; border-bottom: 1px solid var(--border); }
+  .setup-section:last-child { border-bottom: none; }
+  .setup-step { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 6px; }
+  .setup-heading { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .setup-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6; }
+
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    position: relative;
+    overflow-x: auto;
+    line-height: 1.7;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font);
+  }
+
+  .copy-btn:hover { background: var(--bg); }
+
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .agent-grid { grid-template-columns: 1fr; }
+    .agent-section { border-right: none; border-bottom: 1px solid var(--border); }
+    .agent-section:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M2 2h10v10H2z" stroke="white" stroke-width="1.5" fill="none"/>
+          <path d="M5 7h4M7 5v4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      pr-review-agent
+    </a>
+    <div class="nav-links">
+      <button class="nav-link active" onclick="showTab('reviews', this)">Reviews</button>
+      <button class="nav-link" onclick="showTab('setup', this)">Setup</button>
+    </div>
+  </div>
+  <div class="status-dot"><div class="dot"></div> live</div>
+</nav>
+
+<!-- REVIEWS TAB -->
+<div id="tab-reviews" class="container">
+  <div class="page-header">
+    <div class="page-title">Pull Request Reviews</div>
+    <div class="page-subtitle">Every review is generated by three specialized AI agents running in parallel.</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">PRs Reviewed</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-delta">all time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Issues Caught</div>
+      <div class="stat-value" id="stat-issues">—</div>
+      <div class="stat-delta">across all reviews</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Critical Findings</div>
+      <div class="stat-value" id="stat-critical" style="color:var(--red)">—</div>
+      <div class="stat-delta">need attention</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Review Time</div>
+      <div class="stat-value">~28s</div>
+      <div class="stat-delta">3 agents in parallel</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">Recent reviews</div>
+    <div class="section-meta" id="last-updated">loading...</div>
+  </div>
+
+  <div class="review-list" id="review-list">
+    <div class="empty-state">Loading reviews...</div>
+  </div>
+
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+      <div>
+        <div class="detail-title" id="detail-title"></div>
+        <div class="detail-sub" id="detail-sub"></div>
+      </div>
+      <button class="detail-close" onclick="closeDetail()">Close</button>
+    </div>
+    <div class="agent-grid">
+      <div class="agent-section">
+        <div class="agent-label"><span>🔒</span> Security</div>
+        <div class="agent-findings" id="security-findings"></div>
+      </div>
+      <div class="agent-section">
+        <div class="agent-label"><span>⚡</span> Performance</div>
+        <div class="agent-findings" id="perf-findings"></div>
+      </div>
+      <div class="agent-section">
+        <div class="agent-label"><span>🧠</span> Code Quality</div>
+        <div class="agent-findings" id="quality-findings"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header" style="margin-top:8px">
+    <div class="section-title">Agent log</div>
+  </div>
+  <div class="log-panel">
+    <div class="log-body" id="log-body">
+      <div class="log-line"><span class="log-time">—</span><span>Waiting for reviews...</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP TAB -->
+<div id="tab-setup" class="container" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Connect a repository</div>
+    <div class="page-subtitle">Add the bot to any GitHub repo in three steps. Takes about two minutes.</div>
+  </div>
+  <div class="setup-panel visible">
+    <div class="setup-section">
+      <div class="setup-step">Step 1</div>
+      <div class="setup-heading">Add a webhook to your repository</div>
+      <div class="setup-desc">Go to your repo → Settings → Webhooks → Add webhook.</div>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyText('https://pr-review-agent-production-9f8e.up.railway.app/webhook', this)">Copy</button>
+        Payload URL: https://pr-review-agent-production-9f8e.up.railway.app/webhook<br>
+        Content type: application/json<br>
+        Events: Pull requests only
+      </div>
+    </div>
+    <div class="setup-section">
+      <div class="setup-step">Step 2</div>
+      <div class="setup-heading">Set the webhook secret</div>
+      <div class="setup-desc">Enter your shared secret in the webhook's Secret field so the server can verify events are genuinely from GitHub.</div>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyText('WEBHOOK_SECRET=your_secret_here', this)">Copy</button>
+        WEBHOOK_SECRET=your_secret_here
+      </div>
+    </div>
+    <div class="setup-section">
+      <div class="setup-step">Step 3</div>
+      <div class="setup-heading">Open a pull request</div>
+      <div class="setup-desc">The next time anyone opens a PR on that repo, the three agents run automatically and post a structured review within 30 seconds.</div>
+      <div class="code-block">
+git checkout -b your-feature-branch<br>
+git push origin your-feature-branch<br>
+# open a PR on GitHub — the bot handles the rest
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allReviews = []
+  let activeIdx = null
+
+  // ── Fetch real data ──
+  async function loadReviews() {
+    try {
+      const res = await fetch('/api/reviews')
+      allReviews = await res.json()
+      renderReviews()
+    } catch (err) {
+      document.getElementById('review-list').innerHTML =
+        '<div class="empty-state">Could not load reviews.<p>Make sure the server is running.</p></div>'
+    }
+  }
+
+  // ── Parse findings into array ──
+  function parseFindings(text) {
+    if (!text) return []
+    return text.split('\n')
+      .filter(l => l.trim().startsWith('-'))
+      .map(l => l.replace(/^-\s*/, '').trim())
+  }
+
+  // ── Count issues ──
+  function countIssues(review) {
+    return parseFindings(review.security).length +
+           parseFindings(review.performance).length +
+           parseFindings(review.quality).length
+  }
+
+  function countCritical(review) {
+    return parseFindings(review.security).filter(f =>
+      /password|secret|key|inject|vuln|critical/i.test(f)
+    ).length
+  }
+
+  // ── Render review list ──
+  function renderReviews() {
+    const list = document.getElementById('review-list')
+
+    if (!allReviews.length) {
+      list.innerHTML = '<div class="empty-state">No reviews yet.<p>Open a pull request on a connected repo to get started.</p></div>'
+      document.getElementById('stat-total').textContent = '0'
+      document.getElementById('stat-issues').textContent = '0'
+      document.getElementById('stat-critical').textContent = '0'
+      document.getElementById('last-updated').textContent = 'no reviews yet'
+      return
+    }
+
+    const totalIssues = allReviews.reduce((a, r) => a + countIssues(r), 0)
+    const totalCritical = allReviews.reduce((a, r) => a + countCritical(r), 0)
+
+    document.getElementById('stat-total').textContent = allReviews.length
+    document.getElementById('stat-issues').textContent = totalIssues
+    document.getElementById('stat-critical').textContent = totalCritical
+    document.getElementById('last-updated').textContent = `updated ${timeAgo(allReviews[0].reviewed_at)}`
+
+    list.innerHTML = allReviews.map((r, i) => {
+      const issues = countIssues(r)
+      const critical = countCritical(r)
+      const badge = critical > 0
+        ? `<span class="badge badge-red">${critical} critical</span>`
+        : issues > 0
+        ? `<span class="badge badge-yellow">${issues} warnings</span>`
+        : `<span class="badge badge-green">clean</span>`
+
+      return `
+        <div class="review-item ${activeIdx === i ? 'active' : ''}" onclick="showDetail(${i}, this)">
+          <div>
+            <div class="review-top">
+              <span class="pr-number">#${r.pr_number}</span>
+              <span class="pr-title">${r.pr_title}</span>
+            </div>
+            <div class="review-meta">
+              <span>${r.repo}</span>
+              <span>·</span>
+              <span>${timeAgo(r.reviewed_at)}</span>
+            </div>
+          </div>
+          <div class="review-right">
+            ${badge}
+            <span class="badge badge-gray">reviewed</span>
+          </div>
+        </div>`
+    }).join('')
+
+    renderLog()
+  }
+
+  // ── Show detail panel ──
+  function showDetail(idx, el) {
+    activeIdx = idx
+    const r = allReviews[idx]
+
+    document.getElementById('detail-title').textContent = `PR #${r.pr_number} — ${r.pr_title}`
+    document.getElementById('detail-sub').textContent = `${r.repo} · reviewed ${timeAgo(r.reviewed_at)} · 3 agents`
+
+    const renderFindings = (id, text) => {
+      const findings = parseFindings(text)
+      document.getElementById(id).innerHTML = findings.length
+        ? findings.map(f => {
+            const cls = /password|secret|key|inject|vuln/i.test(f) ? 'critical'
+              : /var |missing|should/i.test(f) ? 'warning'
+              : /no issues|clean/i.test(f) ? 'ok' : ''
+            return `<div class="finding ${cls}">${f}</div>`
+          }).join('')
+        : '<div class="finding ok">No issues found</div>'
+    }
+
+    renderFindings('security-findings', r.security)
+    renderFindings('perf-findings', r.performance)
+    renderFindings('quality-findings', r.quality)
+
+    document.getElementById('detail-panel').classList.add('visible')
+    document.querySelectorAll('.review-item').forEach(i => i.classList.remove('active'))
+    el.classList.add('active')
+  }
+
+  function closeDetail() {
+    document.getElementById('detail-panel').classList.remove('visible')
+    document.querySelectorAll('.review-item').forEach(i => i.classList.remove('active'))
+    activeIdx = null
+  }
+
+  // ── Render log ──
+  function renderLog() {
+    const log = document.getElementById('log-body')
+    if (!allReviews.length) return
+    const r = allReviews[0]
+    const t = new Date(r.reviewed_at).toLocaleTimeString()
+    log.innerHTML = `
+      <div class="log-line"><span class="log-time">${t}</span><span>Received GitHub event: <span class="log-ok">pull_request</span></span></div>
+      <div class="log-line"><span class="log-time">${t}</span><span>Processing PR #${r.pr_number}: ${r.pr_title}</span></div>
+      <div class="log-line"><span class="log-time">${t}</span><span>Running all three agents in parallel...</span></div>
+      <div class="log-line"><span class="log-time">${t}</span><span>Agents done. Compiling final review...</span></div>
+      <div class="log-line"><span class="log-time">${t}</span><span class="log-ok">✓ Review posted on PR #${r.pr_number}</span></div>
+    `
+  }
+
+  // ── Time ago ──
+  function timeAgo(iso) {
+    const diff = (Date.now() - new Date(iso)) / 1000
+    if (diff < 60) return 'just now'
+    if (diff < 3600) return `${Math.floor(diff/60)} min ago`
+    if (diff < 86400) return `${Math.floor(diff/3600)} hr ago`
+    return `${Math.floor(diff/86400)} days ago`
+  }
+
+  // ── Tab switching ──
+  function showTab(name, btn) {
+    document.getElementById('tab-reviews').style.display = name === 'reviews' ? 'block' : 'none'
+    document.getElementById('tab-setup').style.display = name === 'setup' ? 'block' : 'none'
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+  }
+
+  // ── Copy ──
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent
+      btn.textContent = 'Copied'
+      setTimeout(() => btn.textContent = orig, 1500)
+    })
+  }
+
+  // ── Init ──
+  loadReviews()
+  setInterval(loadReviews, 30000) // refresh every 30s
+</script>
+</body>
+</html>

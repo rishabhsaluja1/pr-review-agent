@@ -1,17 +1,19 @@
 import express from 'express'
 import crypto from 'crypto'
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { runAgentPipeline } from './agents.js'
 import { getReviews } from './github.js'
 dotenv.config()
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 
 // IMPORTANT: we need raw body for signature verification
 app.use(express.raw({ type: 'application/json' }))
 
 app.get('/', (req, res) => {
-  res.send('PR Review Agent is running!')
+  res.sendFile(path.join(__dirname, '../public/index.html'))
 })
 
 app.get('/api/reviews', (req, res) => {
