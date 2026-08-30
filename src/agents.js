@@ -9,7 +9,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 // ── Agent 1: Security Auditor ──────────────────────────────────────
 async function runSecurityAgent(diff) {
   const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama3-70b-8192',
     messages: [
       {
         role: 'system',
@@ -40,7 +40,7 @@ If nothing is found, write: SECURITY FINDINGS: No issues found.`
 // ── Agent 2: Performance Optimizer ────────────────────────────────
 async function runPerformanceAgent(diff) {
   const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama3-70b-8192',
     messages: [
       {
         role: 'system',
@@ -70,7 +70,7 @@ If nothing is found, write: PERFORMANCE FINDINGS: No issues found.`
 // ── Agent 3: Lead Developer ────────────────────────────────────────
 async function runLeadDevAgent(diff) {
   const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama3-70b-8192',
     messages: [
       {
         role: 'system',
