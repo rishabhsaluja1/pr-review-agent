@@ -13,7 +13,7 @@ const app = express()
 app.use(express.raw({ type: 'application/json' }))
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'))
+  res.sendFile(path.join(process.cwd(), 'public/index.html'))
 })
 
 app.get('/api/reviews', (req, res) => {
